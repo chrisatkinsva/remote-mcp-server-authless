@@ -4,6 +4,14 @@
   "main": "src/index.ts",
   "compatibility_date": "2026-07-02",
   "compatibility_flags": ["nodejs_compat"],
+
+  "migrations": [
+    {
+      "tag": "v2",
+      "deleted_classes": ["PrintavoMCP"]
+    }
+  ],
+
   "observability": {
     "enabled": true
   }
