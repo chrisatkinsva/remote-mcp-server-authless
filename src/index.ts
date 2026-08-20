@@ -40,7 +40,9 @@ async function printavo(
   const data: any = await response.json();
 
   if (!response.ok) {
-    throw new Error(`Printavo HTTP ${response.status}: ${JSON.stringify(data)}`);
+    throw new Error(
+      `Printavo HTTP ${response.status}: ${JSON.stringify(data)}`
+    );
   }
 
   if (data.errors) {
@@ -86,8 +88,9 @@ async function findContact(env: Env, name: string) {
 
   const exact = contacts.find(
     (contact: any) =>
-      String(contact.fullName || "").trim().toLowerCase() ===
-      name.trim().toLowerCase()
+      String(contact.fullName || "")
+        .trim()
+        .toLowerCase() === name.trim().toLowerCase()
   );
 
   return exact || contacts[0];
@@ -149,6 +152,60 @@ async function getContact(
   return createCustomer(env, name);
 }
 
+function normalizeSize(size?: string) {
+  if (!size) {
+    return "size_other";
+  }
+
+  const value = size.trim().toLowerCase();
+
+  const sizes: Record<string, string> = {
+    yxs: "size_yxs",
+    ys: "size_ys",
+    ym: "size_ym",
+    yl: "size_yl",
+    yxl: "size_yxl",
+
+    xs: "size_xs",
+    s: "size_s",
+    m: "size_m",
+    l: "size_l",
+    xl: "size_xl",
+
+    "2xl": "size_2xl",
+    xxl: "size_2xl",
+
+    "3xl": "size_3xl",
+    xxxl: "size_3xl",
+
+    "4xl": "size_4xl",
+    "5xl": "size_5xl",
+    "6xl": "size_6xl",
+
+    "6m": "size_6m",
+    "12m": "size_12m",
+    "18m": "size_18m",
+    "24m": "size_24m",
+
+    "2t": "size_2t",
+    "3t": "size_3t",
+    "4t": "size_4t",
+    "5t": "size_5t",
+
+    os: "size_other",
+    osfa: "size_other",
+    one: "size_other",
+    "one size": "size_other",
+    other: "size_other"
+  };
+
+  if (value.startsWith("size_")) {
+    return value;
+  }
+
+  return sizes[value] || "size_other";
+}
+
 async function createQuote(env: Env, order: any) {
   const contact = await getContact(
     env,
@@ -156,30 +213,48 @@ async function createQuote(env: Env, order: any) {
     Boolean(order.existingCustomer)
   );
 
-  const lineItems = order.items.map((item: any, index: number) => ({
-    position: index + 1,
-    itemNumber: item.itemNumber || "",
-    description: item.description || "",
-    color: item.color || "",
-    price: Number(item.price ?? 0),
-    taxed: Boolean(item.taxed ?? false),
-    sizes: [
-      {
-        size: item.size || "OS",
-        count: Number(item.quantity)
-      }
-    ]
-  }));
+  const lineItems = order.items.map(
+    (item: any, index: number) => ({
+      position: index + 1,
+
+      itemNumber: item.itemNumber || "",
+
+      description: item.description || "",
+
+      color: item.color || "",
+
+      price: Number(item.price ?? 0),
+
+      taxed: Boolean(item.taxed ?? false),
+
+      sizes: [
+        {
+          size: normalizeSize(item.size),
+          count: Number(item.quantity)
+        }
+      ]
+    })
+  );
 
   const input = {
     contact: {
       id: contact.id
     },
+
     nickname: order.nickname,
+
     customerDueAt: order.customerDueAt,
-    dueAt: `${order.customerDueAt}T17:00:00-04:00`,
-    customerNote: order.customerNote || "",
-    productionNote: order.productionNote || "",
+
+    dueAt:
+      order.dueAt ||
+      `${order.customerDueAt}T17:00:00-04:00`,
+
+    customerNote:
+      order.customerNote || "",
+
+    productionNote:
+      order.productionNote || "",
+
     lineItemGroups: [
       {
         position: 1,
@@ -201,6 +276,7 @@ async function createQuote(env: Env, order: any) {
           publicUrl
           total
           totalQuantity
+
           contact {
             id
             fullName
@@ -219,7 +295,11 @@ async function createQuote(env: Env, order: any) {
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env
+  ): Promise<Response> {
+
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
@@ -230,13 +310,20 @@ export default {
     const url = new URL(request.url);
 
     try {
+
       if (url.pathname === "/") {
-        return new Response("Thread House Printavo bridge running", {
-          headers: CORS_HEADERS
-        });
+        return new Response(
+          "Thread House Printavo bridge running",
+          {
+            headers: CORS_HEADERS
+          }
+        );
       }
 
-      if (url.pathname === "/test" && request.method === "GET") {
+      if (
+        url.pathname === "/test" &&
+        request.method === "GET"
+      ) {
         const result = await printavo(
           env,
           `
@@ -251,7 +338,10 @@ export default {
         return json(result);
       }
 
-      if (url.pathname === "/customers" && request.method === "GET") {
+      if (
+        url.pathname === "/customers" &&
+        request.method === "GET"
+      ) {
         const result = await printavo(
           env,
           `
@@ -260,6 +350,7 @@ export default {
                 nodes {
                   id
                   companyName
+
                   primaryContact {
                     id
                     fullName
@@ -275,14 +366,24 @@ export default {
         return json(result);
       }
 
-      if (url.pathname === "/find-contact" && request.method === "GET") {
-        const name = url.searchParams.get("name");
+      if (
+        url.pathname === "/find-contact" &&
+        request.method === "GET"
+      ) {
+        const name =
+          url.searchParams.get("name");
 
         if (!name) {
-          return json({ error: "name is required" }, 400);
+          return json(
+            {
+              error: "name is required"
+            },
+            400
+          );
         }
 
-        const contact = await findContact(env, name);
+        const contact =
+          await findContact(env, name);
 
         return json({
           found: Boolean(contact),
@@ -290,39 +391,77 @@ export default {
         });
       }
 
-      if (url.pathname === "/create-order" && request.method === "POST") {
-        const order: any = await request.json();
+      if (
+        url.pathname === "/create-order" &&
+        request.method === "POST"
+      ) {
+        const order: any =
+          await request.json();
 
         if (!order.customer) {
-          return json({ error: "customer is required" }, 400);
+          return json(
+            {
+              error:
+                "customer is required"
+            },
+            400
+          );
         }
 
         if (!order.nickname) {
-          return json({ error: "nickname is required" }, 400);
+          return json(
+            {
+              error:
+                "nickname is required"
+            },
+            400
+          );
         }
 
         if (!order.customerDueAt) {
-          return json({ error: "customerDueAt is required" }, 400);
+          return json(
+            {
+              error:
+                "customerDueAt is required"
+            },
+            400
+          );
         }
 
-        if (!Array.isArray(order.items) || order.items.length === 0) {
-          return json({ error: "items are required" }, 400);
+        if (
+          !Array.isArray(order.items) ||
+          order.items.length === 0
+        ) {
+          return json(
+            {
+              error:
+                "items are required"
+            },
+            400
+          );
         }
 
         for (const item of order.items) {
-          if (!item.quantity || Number(item.quantity) < 1) {
+          if (
+            !item.quantity ||
+            Number(item.quantity) < 1
+          ) {
             return json(
               {
-                error: `Invalid quantity for item: ${
-                  item.description || item.itemNumber || "unknown"
-                }`
+                error:
+                  `Invalid quantity for item: ${
+                    item.description ||
+                    item.itemNumber ||
+                    "unknown"
+                  }`
               },
               400
             );
           }
         }
 
-        const quote = await createQuote(env, order);
+        const quote =
+          await createQuote(env, order);
 
         return json({
           success: true,
@@ -330,12 +469,23 @@ export default {
         });
       }
 
-      return json({ error: "Not Found" }, 404);
+      return json(
+        {
+          error: "Not Found"
+        },
+        404
+      );
+
     } catch (error) {
+
       return json(
         {
           success: false,
-          error: error instanceof Error ? error.message : String(error)
+
+          error:
+            error instanceof Error
+              ? error.message
+              : String(error)
         },
         500
       );
