@@ -1,5 +1,6 @@
-import { McpServer } from "@modelcontextprotocol/server";
-import { createMcpHandler } from "agents/mcp/server";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { createMcpHandler } from "agents/mcp";
+import { z } from "zod";
 
 function createServer() {
   const server = new McpServer({
@@ -7,13 +8,28 @@ function createServer() {
     version: "1.0.0",
   });
 
+  server.tool(
+    "ping",
+    "Test that the Thread House Printavo MCP server is working.",
+    {},
+    async () => {
+      return {
+        content: [
+          {
+            type: "text",
+            text: "Thread House Printavo MCP is working.",
+          },
+        ],
+      };
+    }
+  );
+
   return server;
 }
 
 export default {
-  fetch(request, env, ctx) {
-    return createMcpHandler(createServer, {
-      route: "/mcp",
-    })(request, env, ctx);
+  fetch(request: Request, env: unknown, ctx: ExecutionContext) {
+    const server = createServer();
+    return createMcpHandler(server)(request, env, ctx);
   },
 };
