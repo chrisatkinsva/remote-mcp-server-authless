@@ -60,12 +60,15 @@ export default {
         `query {
           customers(first: 100) {
             nodes {
-              id
-              companyName
-              firstName
-              lastName
-              email
-              phone
+  id
+  companyName
+  primaryContact {
+    id
+    fullName
+    email
+    phone
+  }
+}
             }
           }
         }`
