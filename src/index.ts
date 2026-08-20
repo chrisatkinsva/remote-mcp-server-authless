@@ -3,12 +3,8 @@ type Env = {
   PRINTAVO_EMAIL: string;
 };
 
-async function printavo(
-  env: Env,
-  query: string,
-  variables: Record<string, unknown> = {}
-) {
-  const response = await fetch("https://www.printavo.com/api/v2", {
+async function api(env: Env, query: string, variables: any = {}) {
+  const r = await fetch("https://www.printavo.com/api/v2", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -18,12 +14,23 @@ async function printavo(
     body: JSON.stringify({ query, variables })
   });
 
-  const text = await response.text();
+  return {
+    status: r.status,
+    body: await r.text()
+  };
+}
 
-  return new Response(text, {
-    status: response.status,
-    headers: { "Content-Type": "application/json" }
-  });
+function json(body: any, status = 200) {
+  return new Response(
+    typeof body === "string" ? body : JSON.stringify(body),
+    {
+      status,
+      headers: {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      }
+    }
+  );
 }
 
 export default {
@@ -34,8 +41,8 @@ export default {
       return new Response("Thread House Printavo bridge running");
     }
 
-    if (url.pathname === "/test-printavo") {
-      return printavo(
+    if (url.pathname === "/test") {
+      const result = await api(
         env,
         `query {
           account {
@@ -43,25 +50,53 @@ export default {
           }
         }`
       );
+
+      return json(result.body, result.status);
     }
 
-    if (url.pathname === "/customers" && request.method === "GET") {
-      const search = url.searchParams.get("search") || "";
-
-      return printavo(
+    if (url.pathname === "/customers") {
+      const result = await api(
         env,
-        `query Customers($search: String) {
-          customers(search: $search) {
-            id
-            firstName
-            lastName
-            company
-            email
-            phone
+        `query {
+          customers(first: 100) {
+            nodes {
+              id
+              companyName
+              firstName
+              lastName
+              email
+              phone
+            }
           }
-        }`,
-        { search }
+        }`
       );
+
+      return json(result.body, result.status);
+    }
+
+    if (url.pathname === "/graphql" && request.method === "POST") {
+      try {
+        const body: any = await request.json();
+
+        if (!body.query) {
+          return json({ error: "query required" }, 400);
+        }
+
+        const result = await api(
+          env,
+          body.query,
+          body.variables || {}
+        );
+
+        return json(result.body, result.status);
+      } catch (e) {
+        return json(
+          {
+            error: e instanceof Error ? e.message : String(e)
+          },
+          500
+        );
+      }
     }
 
     return new Response("Not Found", { status: 404 });
