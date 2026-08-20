@@ -55,27 +55,26 @@ export default {
     }
 
     if (url.pathname === "/customers") {
-      const result = await api(
-        env,
-        `query {
-          customers(first: 100) {
-            nodes {
-  id
-  companyName
-  primaryContact {
-    id
-    fullName
-    email
-    phone
-  }
-}
-            }
+  const result = await api(
+    env,
+    `query {
+      customers(first: 100) {
+        nodes {
+          id
+          companyName
+          primaryContact {
+            id
+            fullName
+            email
+            phone
           }
-        }`
-      );
+        }
+      }
+    }`
+  );
 
-      return json(result.body, result.status);
-    }
+  return json(result.body, result.status);
+}
 
     if (url.pathname === "/graphql" && request.method === "POST") {
       try {
